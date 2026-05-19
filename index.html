@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trip Mapper</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <header class="sidebar-header">
+        <h1>Trip Mapper</h1>
+        <p>Add stops to your trip on the map.</p>
+      </header>
+
+      <form class="sidebar-form" id="stop-form" autocomplete="off" novalidate>
+        <div class="field">
+          <label for="category">Category</label>
+          <input
+            type="text"
+            id="category"
+            name="category"
+            placeholder="e.g. Hotel, Restaurant, Sightseeing"
+          />
+        </div>
+
+        <div class="field field--location" id="location-field">
+          <label for="location">Location</label>
+          <input
+            type="text"
+            id="location"
+            name="location"
+            placeholder="e.g. Eiffel Tower, Paris"
+          />
+          <p class="field-error" id="location-error" role="alert"></p>
+        </div>
+
+        <div class="field">
+          <label for="color">Color</label>
+          <div class="color-row">
+            <input type="color" id="color" name="color" value="#3b82f6" />
+            <input
+              type="text"
+              id="color-hex"
+              value="#3b82f6"
+              maxlength="7"
+              aria-label="Color hex value"
+            />
+          </div>
+        </div>
+
+        <p class="form-toast" id="form-toast" aria-live="polite"></p>
+        <button type="submit" class="btn-add">Add to map</button>
+      </form>
+
+      <section class="stops-section" aria-label="Trip stops">
+        <h2>Your stops</h2>
+        <p class="stops-empty" id="stops-empty">No stops yet. Add a location above.</p>
+        <ul class="stops-list" id="stops-list"></ul>
+      </section>
+    </aside>
+
+    <main class="map-container">
+      <div id="map-placeholder" class="map-placeholder">
+        <div>
+          <p>Google Maps loads here once you add your API key.</p>
+          <p>
+            Set <code>GOOGLE_MAPS_API_KEY</code> in <code>app.js</code> with a key from the
+            <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>
+            (enable Maps JavaScript API).
+          </p>
+        </div>
+      </div>
+      <div id="map"></div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
