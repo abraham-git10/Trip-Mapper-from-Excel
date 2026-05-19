@@ -64,9 +64,11 @@
     <main class="map-container">
       <div id="map-placeholder" class="map-placeholder">
         <div>
-          <p>Google Maps loads here once you add your API key.</p>
+          <p>Google Maps loads here once your API key is configured.</p>
           <p>
-            Set <code>GOOGLE_MAPS_API_KEY</code> in <code>app.js</code> with a key from the
+            Copy <code>.env.example</code> to <code>.env</code>, set
+            <code>VITE_GOOGLE_MAPS_API_KEY</code>, then run <code>npm run dev</code>.
+            Get a key from the
             <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>
             (enable Maps JavaScript API).
           </p>
@@ -76,6 +78,6 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

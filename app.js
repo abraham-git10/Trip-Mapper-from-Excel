@@ -1,8 +1,6 @@
-/** Replace with your Google Maps JavaScript API key */
-const GOOGLE_MAPS_API_KEY = "YOUR_API_KEY";
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const stops = [];
-
 const form = document.getElementById("stop-form");
 const categoryInput = document.getElementById("category");
 const locationInput = document.getElementById("location");
@@ -126,7 +124,7 @@ function initMap() {
 window.initMap = initMap;
 
 function loadGoogleMaps() {
-  if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === "YOUR_API_KEY") {
+  if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === "your_api_key_here") {
     return;
   }
 
