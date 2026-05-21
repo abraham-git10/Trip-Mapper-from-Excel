@@ -8,17 +8,19 @@ const CATEGORIES = {
   attractions: { label: "Attractions", color: "#f59e0b" },
 };
 
-/** Used to identify this app to Nominatim (required by their usage policy). */
 const NOMINATIM_EMAIL = "trip-mapper@users.noreply.github.com";
 
 let activeCategory = "home";
+let editingStopId = null;
 let tripMap = null;
 let geocodeQueue = Promise.resolve();
 const stops = [];
 
 const form = document.getElementById("stop-form");
-const submitBtn = form.querySelector(".btn-add");
+const submitBtn = document.getElementById("submit-stop");
+const cancelEditBtn = document.getElementById("cancel-edit");
 const locationInput = document.getElementById("location");
+const commentsInput = document.getElementById("comments");
 const locationField = document.getElementById("location-field");
 const locationError = document.getElementById("location-error");
 const colorInput = document.getElementById("color");
@@ -32,8 +34,13 @@ const sidebarSubtitle = document.getElementById("sidebar-subtitle");
 const navbarTabs = document.querySelectorAll(".navbar-tab");
 
 navbarTabs.forEach((tab) => {
-  tab.addEventListener("click", () => setActiveCategory(tab.dataset.category));
+  tab.addEventListener("click", () => {
+    cancelEdit();
+    setActiveCategory(tab.dataset.category);
+  });
 });
+
+cancelEditBtn.addEventListener("click", cancelEdit);
 
 colorInput.addEventListener("input", () => {
   colorHexInput.value = colorInput.value;
@@ -50,8 +57,8 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const location = locationInput.value.trim();
+  const comments = commentsInput.value.trim();
   const color = colorInput.value;
-  const category = activeCategory;
 
   if (!location) {
     locationField.classList.add("field--error");
@@ -67,26 +74,64 @@ form.addEventListener("submit", async (e) => {
 
   clearLocationError();
   setFormLoading(true);
-  showToast("Finding location…");
+
+  const isEdit = editingStopId != null;
+  const existingStop = isEdit ? stops.find((s) => s.id === editingStopId) : null;
+
+  if (isEdit && !existingStop) {
+    cancelEdit();
+    setFormLoading(false);
+    return;
+  }
+
+  showToast(isEdit ? "Updating location…" : "Finding location…");
 
   try {
-    const coords = await geocodeAddress(location);
-    const stop = {
-      id: crypto.randomUUID(),
-      category,
-      location,
-      color,
-      lat: coords.lat,
-      lng: coords.lng,
-      marker: null,
-    };
-    stop.marker = createMarker(stop);
-    stops.push(stop);
-    locationInput.value = "";
+    const locationChanged = !isEdit || existingStop.location !== location;
+    let lat = existingStop?.lat;
+    let lng = existingStop?.lng;
+
+    if (locationChanged) {
+      const coords = await geocodeAddress(location);
+      lat = coords.lat;
+      lng = coords.lng;
+    }
+
+    if (isEdit) {
+      existingStop.location = location;
+      existingStop.comments = comments;
+      existingStop.color = color;
+      existingStop.lat = lat;
+      existingStop.lng = lng;
+
+      if (existingStop.marker) {
+        existingStop.marker.setLatLng([lat, lng]);
+        existingStop.marker.setStyle({ fillColor: color });
+        updateMarkerPopup(existingStop);
+      }
+
+      cancelEdit();
+      showToast("Stop updated.");
+    } else {
+      const stop = {
+        id: crypto.randomUUID(),
+        category: activeCategory,
+        location,
+        comments,
+        color,
+        lat,
+        lng,
+        marker: null,
+      };
+      stop.marker = createMarker(stop);
+      stops.push(stop);
+      resetFormFields();
+      showToast(`Added to ${CATEGORIES[activeCategory].label}.`);
+    }
+
     updateMarkerVisibility();
     fitMapToVisibleMarkers();
     renderStopsList();
-    showToast(`Added to ${CATEGORIES[category].label}.`);
     locationInput.focus();
   } catch (err) {
     locationField.classList.add("field--error");
@@ -108,10 +153,11 @@ locationInput.addEventListener("input", () => {
 
 function setFormLoading(loading) {
   submitBtn.disabled = loading;
+  cancelEditBtn.disabled = loading;
   locationInput.disabled = loading;
+  commentsInput.disabled = loading;
 }
 
-/** Nominatim allows max 1 request/second on the public server. */
 function geocodeAddress(address) {
   geocodeQueue = geocodeQueue
     .then(() => new Promise((r) => setTimeout(r, 1100)))
@@ -147,9 +193,16 @@ async function fetchNominatim(address) {
   };
 }
 
-function createMarker(stop) {
+function buildPopupHtml(stop) {
   const categoryLabel = CATEGORIES[stop.category]?.label ?? stop.category;
+  let html = `<strong>${categoryLabel}</strong><br>${escapeHtml(stop.location)}`;
+  if (stop.comments) {
+    html += `<br><span style="opacity:0.85">${escapeHtml(stop.comments)}</span>`;
+  }
+  return html;
+}
 
+function createMarker(stop) {
   const marker = L.circleMarker([stop.lat, stop.lng], {
     radius: 10,
     fillColor: stop.color,
@@ -158,11 +211,14 @@ function createMarker(stop) {
     fillOpacity: 1,
   });
 
-  marker.bindPopup(
-    `<strong>${categoryLabel}</strong><br>${escapeHtml(stop.location)}`
-  );
-
+  marker.bindPopup(buildPopupHtml(stop));
   return marker;
+}
+
+function updateMarkerPopup(stop) {
+  if (stop.marker) {
+    stop.marker.setPopupContent(buildPopupHtml(stop));
+  }
 }
 
 function escapeHtml(text) {
@@ -208,6 +264,71 @@ function focusStop(stop) {
   }
 }
 
+function startEdit(stop) {
+  editingStopId = stop.id;
+  locationInput.value = stop.location;
+  commentsInput.value = stop.comments || "";
+  colorInput.value = stop.color;
+  colorHexInput.value = stop.color;
+
+  form.classList.add("is-editing");
+  cancelEditBtn.hidden = false;
+  submitBtn.textContent = "Save changes";
+  sidebarSubtitle.textContent = `Editing ${stop.location}`;
+
+  clearLocationError();
+  renderStopsList();
+  locationInput.focus();
+}
+
+function cancelEdit() {
+  if (!editingStopId) return;
+
+  editingStopId = null;
+  form.classList.remove("is-editing");
+  cancelEditBtn.hidden = true;
+  submitBtn.textContent = "Add to map";
+  resetFormFields();
+  clearLocationError();
+
+  const { label, color } = CATEGORIES[activeCategory];
+  if (activeCategory === "home") {
+    sidebarSubtitle.textContent = "Add stops to your trip on the map.";
+  } else {
+    sidebarSubtitle.textContent = `Add ${label.toLowerCase()} to your map.`;
+  }
+
+  renderStopsList();
+}
+
+function resetFormFields() {
+  locationInput.value = "";
+  commentsInput.value = "";
+  const { color } = CATEGORIES[activeCategory];
+  colorInput.value = color;
+  colorHexInput.value = color;
+}
+
+function deleteStop(stop) {
+  if (editingStopId === stop.id) {
+    cancelEdit();
+  }
+
+  if (stop.marker && tripMap) {
+    tripMap.removeLayer(stop.marker);
+  }
+
+  const index = stops.findIndex((s) => s.id === stop.id);
+  if (index !== -1) {
+    stops.splice(index, 1);
+  }
+
+  updateMarkerVisibility();
+  fitMapToVisibleMarkers();
+  renderStopsList();
+  showToast("Stop removed.");
+}
+
 function setActiveCategory(category) {
   if (!CATEGORIES[category]) return;
 
@@ -219,18 +340,20 @@ function setActiveCategory(category) {
     tab.setAttribute("aria-selected", isActive ? "true" : "false");
   });
 
-  const { label, color } = CATEGORIES[category];
-  colorInput.value = color;
-  colorHexInput.value = color;
+  if (!editingStopId) {
+    const { label, color } = CATEGORIES[category];
+    colorInput.value = color;
+    colorHexInput.value = color;
 
-  if (category === "home") {
-    sidebarTitle.textContent = "Your trip";
-    sidebarSubtitle.textContent = "Add stops to your trip on the map.";
-    stopsSectionTitle.textContent = "All stops";
-  } else {
-    sidebarTitle.textContent = label;
-    sidebarSubtitle.textContent = `Add ${label.toLowerCase()} to your map.`;
-    stopsSectionTitle.textContent = `Your ${label.toLowerCase()}`;
+    if (category === "home") {
+      sidebarTitle.textContent = "Your trip";
+      sidebarSubtitle.textContent = "Add stops to your trip on the map.";
+      stopsSectionTitle.textContent = "All stops";
+    } else {
+      sidebarTitle.textContent = label;
+      sidebarSubtitle.textContent = `Add ${label.toLowerCase()} to your map.`;
+      stopsSectionTitle.textContent = `Your ${label.toLowerCase()}`;
+    }
   }
 
   updateMarkerVisibility();
@@ -273,12 +396,18 @@ function renderStopsList() {
   visible.forEach((stop) => {
     const li = document.createElement("li");
     li.className = "stop-item";
-    li.title = "Show on map";
+    if (stop.id === editingStopId) {
+      li.classList.add("is-editing");
+    }
 
     const dot = document.createElement("span");
     dot.className = "stop-color";
     dot.style.backgroundColor = stop.color;
     dot.setAttribute("aria-hidden", "true");
+
+    const main = document.createElement("div");
+    main.className = "stop-main";
+    main.title = "Show on map";
 
     const details = document.createElement("div");
     details.className = "stop-details";
@@ -295,8 +424,39 @@ function renderStopsList() {
     loc.textContent = stop.location;
     details.appendChild(loc);
 
-    li.append(dot, details);
-    li.addEventListener("click", () => focusStop(stop));
+    if (stop.comments) {
+      const commentEl = document.createElement("div");
+      commentEl.className = "stop-comments";
+      commentEl.textContent = stop.comments;
+      details.appendChild(commentEl);
+    }
+
+    main.appendChild(details);
+    main.addEventListener("click", () => focusStop(stop));
+
+    const actions = document.createElement("div");
+    actions.className = "stop-actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "stop-action-btn stop-action-btn--edit";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      startEdit(stop);
+    });
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "stop-action-btn stop-action-btn--delete";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteStop(stop);
+    });
+
+    actions.append(editBtn, deleteBtn);
+    li.append(dot, main, actions);
     stopsList.appendChild(li);
   });
 }
@@ -315,7 +475,6 @@ function initMap() {
 
   window.tripMap = tripMap;
 
-  // Leaflet needs a layout pass after the flex container is sized
   requestAnimationFrame(() => {
     tripMap.invalidateSize();
   });

@@ -46,6 +46,16 @@
         </div>
 
         <div class="field">
+          <label for="comments">Comments</label>
+          <textarea
+            id="comments"
+            name="comments"
+            rows="3"
+            placeholder="Notes, times, booking refs…"
+          ></textarea>
+        </div>
+
+        <div class="field">
           <label for="color">Color</label>
           <div class="color-row">
             <input type="color" id="color" name="color" value="#3b82f6" />
@@ -60,7 +70,10 @@
         </div>
 
         <p class="form-toast" id="form-toast" aria-live="polite"></p>
-        <button type="submit" class="btn-add">Add to map</button>
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" id="cancel-edit" hidden>Cancel</button>
+          <button type="submit" class="btn-add" id="submit-stop">Add to map</button>
+        </div>
       </form>
 
       <section class="stops-section" aria-label="Trip stops">
