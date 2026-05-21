@@ -29,8 +29,8 @@ const formToast = document.getElementById("form-toast");
 const stopsList = document.getElementById("stops-list");
 const stopsEmpty = document.getElementById("stops-empty");
 const stopsSectionTitle = document.querySelector(".stops-section h2");
-const sidebarTitle = document.getElementById("sidebar-title");
-const sidebarSubtitle = document.getElementById("sidebar-subtitle");
+const leftsidebarTitle = document.getElementById("left-sidebar-title");
+const leftsidebarSubtitle = document.getElementById("left-sidebar-subtitle");
 const navbarTabs = document.querySelectorAll(".navbar-tab");
 
 navbarTabs.forEach((tab) => {
@@ -274,7 +274,7 @@ function startEdit(stop) {
   form.classList.add("is-editing");
   cancelEditBtn.hidden = false;
   submitBtn.textContent = "Save changes";
-  sidebarSubtitle.textContent = `Editing ${stop.location}`;
+  leftsidebarSubtitle.textContent = `Editing ${stop.location}`;
 
   clearLocationError();
   renderStopsList();
@@ -293,9 +293,9 @@ function cancelEdit() {
 
   const { label, color } = CATEGORIES[activeCategory];
   if (activeCategory === "home") {
-    sidebarSubtitle.textContent = "Add stops to your trip on the map.";
+    leftsidebarSubtitle.textContent = "Add stops to your trip on the map.";
   } else {
-    sidebarSubtitle.textContent = `Add ${label.toLowerCase()} to your map.`;
+    leftsidebarSubtitle.textContent = `Add ${label.toLowerCase()} to your map.`;
   }
 
   renderStopsList();
@@ -346,12 +346,12 @@ function setActiveCategory(category) {
     colorHexInput.value = color;
 
     if (category === "home") {
-      sidebarTitle.textContent = "Your trip";
-      sidebarSubtitle.textContent = "Add stops to your trip on the map.";
+      leftsidebarTitle.textContent = "Your trip";
+      leftsidebarSubtitle.textContent = "Add stops to your trip on the map.";
       stopsSectionTitle.textContent = "All stops";
     } else {
-      sidebarTitle.textContent = label;
-      sidebarSubtitle.textContent = `Add ${label.toLowerCase()} to your map.`;
+      leftsidebarTitle.textContent = label;
+      leftsidebarSubtitle.textContent = `Add ${label.toLowerCase()} to your map.`;
       stopsSectionTitle.textContent = `Your ${label.toLowerCase()}`;
     }
   }
