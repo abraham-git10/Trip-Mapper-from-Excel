@@ -1,5 +1,3 @@
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
 const CATEGORIES = {
   home: { label: "Home", color: "#3b82f6" },
   flights: { label: "Flights", color: "#8b5cf6" },
@@ -7,10 +5,16 @@ const CATEGORIES = {
   attractions: { label: "Attractions", color: "#f59e0b" },
 };
 
+/** Used to identify this app to Nominatim (required by their usage policy). */
+const NOMINATIM_EMAIL = "trip-mapper@users.noreply.github.com";
+
 let activeCategory = "home";
+let tripMap = null;
+let geocodeQueue = Promise.resolve();
 const stops = [];
 
 const form = document.getElementById("stop-form");
+const submitBtn = form.querySelector(".btn-add");
 const locationInput = document.getElementById("location");
 const locationField = document.getElementById("location-field");
 const locationError = document.getElementById("location-error");
@@ -22,7 +26,6 @@ const stopsEmpty = document.getElementById("stops-empty");
 const stopsSectionTitle = document.querySelector(".stops-section h2");
 const sidebarTitle = document.getElementById("sidebar-title");
 const sidebarSubtitle = document.getElementById("sidebar-subtitle");
-const mapPlaceholder = document.getElementById("map-placeholder");
 const navbarTabs = document.querySelectorAll(".navbar-tab");
 
 navbarTabs.forEach((tab) => {
@@ -40,7 +43,7 @@ colorHexInput.addEventListener("input", () => {
   }
 });
 
-form.addEventListener("submit", (e) => {
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const location = locationInput.value.trim();
@@ -54,11 +57,44 @@ form.addEventListener("submit", (e) => {
     return;
   }
 
+  if (!tripMap) {
+    showToast("Map is still loading. Try again in a moment.");
+    return;
+  }
+
   clearLocationError();
-  addStop({ category, location, color });
-  showToast(`Added to ${CATEGORIES[category].label}.`);
-  locationInput.value = "";
-  locationInput.focus();
+  setFormLoading(true);
+  showToast("Finding location…");
+
+  try {
+    const coords = await geocodeAddress(location);
+    const stop = {
+      id: crypto.randomUUID(),
+      category,
+      location,
+      color,
+      lat: coords.lat,
+      lng: coords.lng,
+      marker: null,
+    };
+    stop.marker = createMarker(stop);
+    stops.push(stop);
+    locationInput.value = "";
+    updateMarkerVisibility();
+    fitMapToVisibleMarkers();
+    renderStopsList();
+    showToast(`Added to ${CATEGORIES[category].label}.`);
+    locationInput.focus();
+  } catch (err) {
+    locationField.classList.add("field--error");
+    locationError.textContent =
+      err.message === "ZERO_RESULTS"
+        ? "Could not find that location. Try a more specific address."
+        : "Could not place this location on the map. Check your connection or try again.";
+    showToast("Location not found on map.");
+  } finally {
+    setFormLoading(false);
+  }
 });
 
 locationInput.addEventListener("input", () => {
@@ -66,6 +102,108 @@ locationInput.addEventListener("input", () => {
     clearLocationError();
   }
 });
+
+function setFormLoading(loading) {
+  submitBtn.disabled = loading;
+  locationInput.disabled = loading;
+}
+
+/** Nominatim allows max 1 request/second on the public server. */
+function geocodeAddress(address) {
+  geocodeQueue = geocodeQueue
+    .then(() => new Promise((r) => setTimeout(r, 1100)))
+    .then(() => fetchNominatim(address));
+  return geocodeQueue;
+}
+
+async function fetchNominatim(address) {
+  const params = new URLSearchParams({
+    q: address,
+    format: "json",
+    limit: "1",
+    email: NOMINATIM_EMAIL,
+  });
+
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/search?${params}`,
+    { headers: { Accept: "application/json" } }
+  );
+
+  if (!response.ok) {
+    throw new Error("NETWORK");
+  }
+
+  const results = await response.json();
+  if (!results.length) {
+    throw new Error("ZERO_RESULTS");
+  }
+
+  return {
+    lat: parseFloat(results[0].lat),
+    lng: parseFloat(results[0].lon),
+  };
+}
+
+function createMarker(stop) {
+  const categoryLabel = CATEGORIES[stop.category]?.label ?? stop.category;
+
+  const marker = L.circleMarker([stop.lat, stop.lng], {
+    radius: 10,
+    fillColor: stop.color,
+    color: "#ffffff",
+    weight: 2,
+    fillOpacity: 1,
+  });
+
+  marker.bindPopup(
+    `<strong>${categoryLabel}</strong><br>${escapeHtml(stop.location)}`
+  );
+
+  return marker;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function updateMarkerVisibility() {
+  const visibleIds = new Set(getVisibleStops().map((s) => s.id));
+
+  stops.forEach((stop) => {
+    if (!stop.marker) return;
+
+    if (visibleIds.has(stop.id)) {
+      if (!tripMap.hasLayer(stop.marker)) {
+        stop.marker.addTo(tripMap);
+      }
+    } else if (tripMap.hasLayer(stop.marker)) {
+      tripMap.removeLayer(stop.marker);
+    }
+  });
+}
+
+function fitMapToVisibleMarkers() {
+  const visible = getVisibleStops().filter((s) => s.lat != null);
+  if (!visible.length || !tripMap) return;
+
+  if (visible.length === 1) {
+    tripMap.setView([visible[0].lat, visible[0].lng], 12);
+    return;
+  }
+
+  const bounds = L.latLngBounds(visible.map((s) => [s.lat, s.lng]));
+  tripMap.fitBounds(bounds, { padding: [48, 48], maxZoom: 12 });
+}
+
+function focusStop(stop) {
+  if (!tripMap || stop.lat == null) return;
+  tripMap.setView([stop.lat, stop.lng], Math.max(tripMap.getZoom(), 12));
+  if (stop.marker) {
+    stop.marker.openPopup();
+  }
+}
 
 function setActiveCategory(category) {
   if (!CATEGORIES[category]) return;
@@ -92,6 +230,8 @@ function setActiveCategory(category) {
     stopsSectionTitle.textContent = `Your ${label.toLowerCase()}`;
   }
 
+  updateMarkerVisibility();
+  fitMapToVisibleMarkers();
   renderStopsList();
 }
 
@@ -106,11 +246,6 @@ function showToast(message) {
   showToast._timer = setTimeout(() => {
     formToast.textContent = "";
   }, 2500);
-}
-
-function addStop(stop) {
-  stops.push(stop);
-  renderStopsList();
 }
 
 function getVisibleStops() {
@@ -135,6 +270,7 @@ function renderStopsList() {
   visible.forEach((stop) => {
     const li = document.createElement("li");
     li.className = "stop-item";
+    li.title = "Show on map";
 
     const dot = document.createElement("span");
     dot.className = "stop-color";
@@ -157,42 +293,27 @@ function renderStopsList() {
     details.appendChild(loc);
 
     li.append(dot, details);
+    li.addEventListener("click", () => focusStop(stop));
     stopsList.appendChild(li);
   });
 }
 
 function initMap() {
-  mapPlaceholder.classList.add("hidden");
+  tripMap = L.map("map", { zoomControl: true }).setView([48.8566, 2.3522], 4);
 
-  const map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: 48.8566, lng: 2.3522 },
-    zoom: 4,
-    mapTypeControl: true,
-    streetViewControl: true,
-    fullscreenControl: true,
-    zoomControl: true,
-  });
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(tripMap);
 
-  window.tripMap = map;
-}
-
-window.initMap = initMap;
-
-function loadGoogleMaps() {
-  if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === "your_api_key_here") {
-    return;
-  }
-
-  const script = document.createElement("script");
-  script.async = true;
-  script.defer = true;
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
-  script.onerror = () => {
-    mapPlaceholder.querySelector("div").innerHTML =
-      "<p>Failed to load Google Maps. Check your API key and that Maps JavaScript API is enabled.</p>";
-  };
-  document.head.appendChild(script);
+  window.tripMap = tripMap;
 }
 
 setActiveCategory("home");
-loadGoogleMaps();
+
+if (typeof L !== "undefined") {
+  initMap();
+} else {
+  console.error("Leaflet failed to load.");
+}
