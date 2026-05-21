@@ -475,9 +475,11 @@ function initMap() {
 
   window.tripMap = tripMap;
 
-  requestAnimationFrame(() => {
+  window.tripMap = tripMap;
+
+  setTimeout(() => {
     tripMap.invalidateSize();
-  });
+  }, 100);
 }
 
 setActiveCategory("home");
