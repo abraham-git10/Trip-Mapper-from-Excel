@@ -7,24 +7,33 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app">
+  <div class="app-shell">
+    <nav class="navbar" aria-label="Trip categories">
+      <a class="navbar-brand" href="#">Trip Mapper</a>
+      <ul class="navbar-tabs" role="tablist">
+        <li role="presentation">
+          <button type="button" class="navbar-tab is-active" role="tab" aria-selected="true" data-category="home">Home</button>
+        </li>
+        <li role="presentation">
+          <button type="button" class="navbar-tab" role="tab" aria-selected="false" data-category="flights">Flights</button>
+        </li>
+        <li role="presentation">
+          <button type="button" class="navbar-tab" role="tab" aria-selected="false" data-category="stays">Stays</button>
+        </li>
+        <li role="presentation">
+          <button type="button" class="navbar-tab" role="tab" aria-selected="false" data-category="attractions">Attractions</button>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="app">
     <aside class="sidebar">
       <header class="sidebar-header">
-        <h1>Trip Mapper</h1>
-        <p>Add stops to your trip on the map.</p>
+        <h1 id="sidebar-title">Your trip</h1>
+        <p id="sidebar-subtitle">Add stops to your trip on the map.</p>
       </header>
 
       <form class="sidebar-form" id="stop-form" autocomplete="off" novalidate>
-        <div class="field">
-          <label for="category">Category</label>
-          <input
-            type="text"
-            id="category"
-            name="category"
-            placeholder="e.g. Hotel, Restaurant, Sightseeing"
-          />
-        </div>
-
         <div class="field field--location" id="location-field">
           <label for="location">Location</label>
           <input
@@ -77,6 +86,7 @@
       </div>
       <div id="map"></div>
     </main>
+    </div>
   </div>
 
   <script type="module" src="/app.js"></script>

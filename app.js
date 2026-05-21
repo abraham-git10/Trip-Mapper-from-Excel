@@ -1,8 +1,16 @@
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
+const CATEGORIES = {
+  home: { label: "Home", color: "#3b82f6" },
+  flights: { label: "Flights", color: "#8b5cf6" },
+  stays: { label: "Stays", color: "#10b981" },
+  attractions: { label: "Attractions", color: "#f59e0b" },
+};
+
+let activeCategory = "home";
 const stops = [];
+
 const form = document.getElementById("stop-form");
-const categoryInput = document.getElementById("category");
 const locationInput = document.getElementById("location");
 const locationField = document.getElementById("location-field");
 const locationError = document.getElementById("location-error");
@@ -11,7 +19,15 @@ const colorHexInput = document.getElementById("color-hex");
 const formToast = document.getElementById("form-toast");
 const stopsList = document.getElementById("stops-list");
 const stopsEmpty = document.getElementById("stops-empty");
+const stopsSectionTitle = document.querySelector(".stops-section h2");
+const sidebarTitle = document.getElementById("sidebar-title");
+const sidebarSubtitle = document.getElementById("sidebar-subtitle");
 const mapPlaceholder = document.getElementById("map-placeholder");
+const navbarTabs = document.querySelectorAll(".navbar-tab");
+
+navbarTabs.forEach((tab) => {
+  tab.addEventListener("click", () => setActiveCategory(tab.dataset.category));
+});
 
 colorInput.addEventListener("input", () => {
   colorHexInput.value = colorInput.value;
@@ -27,9 +43,9 @@ colorHexInput.addEventListener("input", () => {
 form.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  const category = categoryInput.value.trim();
   const location = locationInput.value.trim();
   const color = colorInput.value;
+  const category = activeCategory;
 
   if (!location) {
     locationField.classList.add("field--error");
@@ -40,11 +56,9 @@ form.addEventListener("submit", (e) => {
 
   clearLocationError();
   addStop({ category, location, color });
-  showToast("Added to your trip list.");
-  form.reset();
-  colorInput.value = color;
-  colorHexInput.value = color;
-  categoryInput.focus();
+  showToast(`Added to ${CATEGORIES[category].label}.`);
+  locationInput.value = "";
+  locationInput.focus();
 });
 
 locationInput.addEventListener("input", () => {
@@ -52,6 +66,34 @@ locationInput.addEventListener("input", () => {
     clearLocationError();
   }
 });
+
+function setActiveCategory(category) {
+  if (!CATEGORIES[category]) return;
+
+  activeCategory = category;
+
+  navbarTabs.forEach((tab) => {
+    const isActive = tab.dataset.category === category;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+
+  const { label, color } = CATEGORIES[category];
+  colorInput.value = color;
+  colorHexInput.value = color;
+
+  if (category === "home") {
+    sidebarTitle.textContent = "Your trip";
+    sidebarSubtitle.textContent = "Add stops to your trip on the map.";
+    stopsSectionTitle.textContent = "All stops";
+  } else {
+    sidebarTitle.textContent = label;
+    sidebarSubtitle.textContent = `Add ${label.toLowerCase()} to your map.`;
+    stopsSectionTitle.textContent = `Your ${label.toLowerCase()}`;
+  }
+
+  renderStopsList();
+}
 
 function clearLocationError() {
   locationField.classList.remove("field--error");
@@ -71,13 +113,26 @@ function addStop(stop) {
   renderStopsList();
 }
 
+function getVisibleStops() {
+  if (activeCategory === "home") return stops;
+  return stops.filter((stop) => stop.category === activeCategory);
+}
+
 function renderStopsList() {
-  const hasStops = stops.length > 0;
+  const visible = getVisibleStops();
+  const hasStops = visible.length > 0;
   stopsEmpty.hidden = hasStops;
+
+  if (!hasStops) {
+    stopsEmpty.textContent =
+      activeCategory === "home"
+        ? "No stops yet. Add a location above."
+        : `No ${CATEGORIES[activeCategory].label.toLowerCase()} yet. Add one above.`;
+  }
 
   stopsList.querySelectorAll(".stop-item").forEach((el) => el.remove());
 
-  stops.forEach((stop) => {
+  visible.forEach((stop) => {
     const li = document.createElement("li");
     li.className = "stop-item";
 
@@ -89,10 +144,10 @@ function renderStopsList() {
     const details = document.createElement("div");
     details.className = "stop-details";
 
-    if (stop.category) {
+    if (activeCategory === "home") {
       const cat = document.createElement("div");
       cat.className = "stop-category";
-      cat.textContent = stop.category;
+      cat.textContent = CATEGORIES[stop.category]?.label ?? stop.category;
       details.appendChild(cat);
     }
 
@@ -139,4 +194,5 @@ function loadGoogleMaps() {
   document.head.appendChild(script);
 }
 
+setActiveCategory("home");
 loadGoogleMaps();
