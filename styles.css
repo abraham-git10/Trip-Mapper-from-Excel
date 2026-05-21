@@ -530,7 +530,7 @@ a {
   color: var(--accent);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 950px) {
   .navbar {
     flex-wrap: wrap;
     height: auto;
@@ -546,14 +546,24 @@ a {
     flex-direction: column;
   }
 
-  .left-sidebar {
+  .left-sidebar, .right-sidebar {
     width: 100%;
     min-width: unset;
-    max-height: 45vh;
+    border-left: none;
+    border-right: none;
+  }
+
+  .left-sidebar {
+    border-bottom: 1px solid var(--border);
+    max-height: 35vh;
   }
 
   .map-container {
     flex: 1;
-    min-height: 55vh;
+    min-height: 40vh;
+  }
+  .right-sidebar {
+    max-height: 25vh;
+    border-top: 1px solid var(--border);
   }
 }
