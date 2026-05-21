@@ -1,3 +1,6 @@
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
 const CATEGORIES = {
   home: { label: "Home", color: "#3b82f6" },
   flights: { label: "Flights", color: "#8b5cf6" },
@@ -299,21 +302,29 @@ function renderStopsList() {
 }
 
 function initMap() {
-  tripMap = L.map("map", { zoomControl: true }).setView([48.8566, 2.3522], 4);
+  const mapEl = document.getElementById("map");
+  if (!mapEl) return;
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  tripMap = L.map(mapEl, { zoomControl: true }).setView([48.8566, 2.3522], 4);
+
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
   }).addTo(tripMap);
 
   window.tripMap = tripMap;
+
+  // Leaflet needs a layout pass after the flex container is sized
+  requestAnimationFrame(() => {
+    tripMap.invalidateSize();
+  });
 }
 
 setActiveCategory("home");
 
-if (typeof L !== "undefined") {
-  initMap();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initMap);
 } else {
-  console.error("Leaflet failed to load.");
+  initMap();
 }
