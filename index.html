@@ -109,7 +109,20 @@
     import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
 
     let generator = null;
-    window.aiFactCache = {}; 
+    window.aiFactCache = {};
+    window.currentViewingLocation = null;
+
+    // Add this new array of fun loading messages
+    const loadingPhrases = [
+        "Flipping through travel brochures...",
+        "Consulting local guides...",
+        "Packing virtual bags...",
+        "Scanning global itineraries...",
+        "Chatting with the concierge...",
+        "Unfolding the map...",
+        "Checking local transit routes...",
+        "Hunting for hidden gems..."
+    ];
 
     const statusDiv = document.getElementById('ai-status');
     const outputDiv = document.getElementById('ai-output');
@@ -185,8 +198,8 @@
         if (window.aiFactCache[cacheKey]) {
             outputDiv.innerText = window.aiFactCache[cacheKey];
         } else {
-            let contextType = category === "flights" ? "airport" : "destination";
-            outputDiv.innerText = `Arrived at ${cacheKey}! The background AI helper is compiling data for this ${contextType} right now...`;
+          const randomPhrase = loadingPhrases[Math.floor(Math.random() * loadingPhrases.length)];
+          outputDiv.innerText = `Arrived at ${cacheKey}! ${randomPhrase}`;
             
             if (generator) {
                 window.precomputeAllFacts([{ location: cacheKey, category: category }]);
