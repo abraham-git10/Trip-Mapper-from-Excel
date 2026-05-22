@@ -257,33 +257,24 @@ function fitMapToVisibleMarkers() {
 }
 
 function focusStop(stop) {
-  if (!tripMap || stop.lat == null) {
-    console.warn("Map not ready", stop);
-    return;
+  if (!tripMap || stop.lat == null) return;
+  tripMap.setView([stop.lat, stop.lng], Math.max(tripMap.getZoom(), 12));
+  if (stop.marker) {
+    stop.marker.openPopup();
   }
 
-  try {
-    tripMap.setView([stop.lat, stop.lng], Math.max(tripMap.getZoom(), 12));
-    if (stop.marker) {
-      stop.marker.openPopup();
-    }
-
-    // Update right sidebar header text dynamically
-    const rightTitle = document.getElementById("right-sidebar-title");
-    const rightSubtitle = document.getElementById("right-sidebar-subtitle");
-    
-    if (rightTitle && rightSubtitle) {
-      rightTitle.textContent = stop.location;
-      rightSubtitle.textContent = `Category: ${CATEGORIES[stop.category]?.label ?? stop.category}`;
-    }
-
-    // Trigger the browser AI engine
-    if (typeof window.askAIAboutPlace === "function") {
-      window.askAIAboutPlace(stop.location);
-    }
+  // Update right sidebar header text dynamically
+  const rightTitle = document.getElementById("right-sidebar-title");
+  const rightSubtitle = document.getElementById("right-sidebar-subtitle");
+  
+  if (rightTitle && rightSubtitle) {
+    rightTitle.textContent = stop.location;
+    rightSubtitle.textContent = `Category: ${CATEGORIES[stop.category]?.label ?? stop.category}`;
   }
-  catch {
-    console.error("Error in method", error);
+
+  // Trigger the browser AI engine
+  if (typeof window.askAIAboutPlace === "function") {
+    window.askAIAboutPlace(stop.location);
   }
 }
 
