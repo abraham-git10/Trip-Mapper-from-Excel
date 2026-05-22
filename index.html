@@ -139,7 +139,7 @@
             if (generatedText.startsWith(cleanPrompt)) {
                 generatedText = generatedText.substring(cleanPrompt.length).trim();
             }
-            statusDiv.innerText = "AI Engine: Done";
+            statusDiv.innerText = locationName; // test
             outputDiv.innerText = generatedText || "No information found.";
         } catch (error) {
             statusDiv.innerText = "AI Engine: Error";
