@@ -1,5 +1,5 @@
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+// import L from "leaflet";
+// import "leaflet/dist/leaflet.css";
 
 const CATEGORIES = {
   home: { label: "Home", color: "#3b82f6" },
