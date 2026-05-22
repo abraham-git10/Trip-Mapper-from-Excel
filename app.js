@@ -211,7 +211,13 @@ function createMarker(stop) {
     fillOpacity: 1,
   });
 
-  marker.bindPopup(buildPopupHtml(stop));
+  marker.bindPopup(buildPopupHtml(stop), { autoPan: false });
+
+  marker.on("click", () => {
+    console.log(`[Trip Mapper AI] Pin clicked for: ${stop.location}`);
+    focusStop(stop); 
+  });
+
   return marker;
 }
 
