@@ -124,27 +124,56 @@
         }
     }
 
-    window.askAIAboutPlace = async function(locationName) {
-        if (!generator) return;
-        statusDiv.innerText = "AI Engine: Generating Fact...";
-        outputDiv.innerText = `Thinking about ${locationName}...`;
-        try {
-            const cleanPrompt = `Give me a concise, one-sentence interesting travel fact about ${locationName}.`;
-            const response = await generator(cleanPrompt, {
-                max_new_tokens: 80,
-                temperature: 0.6,
-                do_sample: true
-            });
-            let generatedText = response[0].generated_text;
-            if (generatedText.startsWith(cleanPrompt)) {
-                generatedText = generatedText.substring(cleanPrompt.length).trim();
-            }
-            statusDiv.innerText = locationName; // test
-            outputDiv.innerText = generatedText || "No information found.";
-        } catch (error) {
-            statusDiv.innerText = "AI Engine: Error";
-            outputDiv.innerText = "Could not produce data: " + error.message;
-        }
+    // Add 'category' as a second argument to the function
+    window.askAIAboutPlace = async function(locationName, category = "") {
+      if (!generator) return;
+      statusDiv.innerText = "AI Engine: Generating Fact...";
+      outputDiv.innerText = `Thinking about ${locationName}...`;
+      
+      try {
+          // Clean up the category name (e.g., "flights" becomes "flight/airport")
+          let contextType = category;
+          if (category === "flights") contextType = "flight/airport destination";
+          if (category === "hotels") contextType = "lodging/hotel stay";
+          if (category === "activities") contextType = "travel activity/landmark";
+
+          // 1. Give the AI context so it knows what "IAH" or "LAX" actually means!
+          const messages = [
+              { 
+                  role: "system", 
+                  content: "You are a helpful travel assistant. Provide a concise, one-sentence interesting travel fact based on the location and context given." 
+              },
+              { 
+                  role: "user", 
+                  content: `Tell me an interesting fact about ${locationName} (Context: This is a ${contextType} for a trip).` 
+              }
+          ];
+
+          // 2. Run the generator
+          const response = await generator(messages, {
+              max_new_tokens: 60,
+              temperature: 0.7,
+              do_sample: true
+          });
+
+          // 3. Extract the text safely
+          let generatedText = response[0]?.generated_text;
+          if (Array.isArray(generatedText)) {
+              generatedText = generatedText[generatedText.length - 1]?.content;
+          } else if (typeof generatedText === 'string') {
+              generatedText = generatedText.split("assistant\n").pop().trim();
+          }
+
+          statusDiv.innerText = "AI Engine: Standby / Ready";
+          outputDiv.innerText = generatedText && generatedText.trim() 
+              ? generatedText.trim() 
+              : `A fascinating ${contextType}! Click again to try generating another fact.`;
+
+      } catch (error) {
+          console.error("AI Generation Error:", error);
+          statusDiv.innerText = "AI Engine: Error";
+          outputDiv.innerText = "Could not produce data: " + error.message;
+      }
     }
     initAI();
   </script>
