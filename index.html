@@ -108,7 +108,10 @@
   <script type="module">
     import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
 
-    let generator;
+    let generator = null;
+    // Global cache to store text facts instantly: { "IAH": "Fact text...", "Paris": "Fact text..." }
+    window.aiFactCache = {}; 
+
     const statusDiv = document.getElementById('ai-status');
     const outputDiv = document.getElementById('ai-output');
 
@@ -118,63 +121,71 @@
             generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat');
             statusDiv.innerText = "AI Engine: Standby / Ready";
             outputDiv.innerText = "Select or click any stop to view automated AI facts.";
+            
+            // If you have initial/default stops loaded on startup, cache them immediately
+            if (window.tripStops && window.tripStops.length > 0) {
+                window.precomputeAllFacts(window.tripStops);
+            }
         } catch (error) {
+            console.error("AI Init Error:", error);
             statusDiv.innerText = "AI Engine: Offline";
-            outputDiv.innerText = "Error loading AI: " + error.message;
         }
     }
 
-    // Add 'category' as a second argument to the function
-    window.askAIAboutPlace = async function(locationName, category = "") {
-      if (!generator) return;
-      statusDiv.innerText = "AI Engine: Generating Fact...";
-      outputDiv.innerText = `Thinking about ${locationName}...`;
-      
-      try {
-          // Clean up the category name (e.g., "flights" becomes "flight/airport")
-          let contextType = category;
-          if (category === "flights") contextType = "flight/airport destination";
-          if (category === "hotels") contextType = "lodging/hotel stay";
-          if (category === "activities") contextType = "travel activity/landmark";
+    // Background engine worker loop
+    window.precomputeAllFacts = async function(stopsArray) {
+        if (!generator) return;
+        
+        console.log("[Trip Mapper AI] Starting background caching for stops...");
+        statusDiv.innerText = "AI Engine: Optimizing route data...";
 
-          // 1. Give the AI context so it knows what "IAH" or "LAX" actually means!
-          const messages = [
-              { 
-                  role: "system", 
-                  content: "You are a helpful travel assistant. Provide a concise, one-sentence interesting travel fact based on the location and context given." 
-              },
-              { 
-                  role: "user", 
-                  content: `Tell me an interesting fact about ${locationName} (Context: This is a ${contextType} for a trip).` 
-              }
-          ];
+        for (const stop of stopsArray) {
+            // Skip if we already have this location cached
+            if (window.aiFactCache[stop.location]) continue;
 
-          // 2. Run the generator
-          const response = await generator(messages, {
-              max_new_tokens: 60,
-              temperature: 0.7,
-              do_sample: true
-          });
+            try {
+                let contextType = stop.category === "flights" ? "airport" : "travel destination";
+                const prompt = `Give me a short travel fact about the ${contextType} named ${stop.location}.`;
 
-          // 3. Extract the text safely
-          let generatedText = response[0]?.generated_text;
-          if (Array.isArray(generatedText)) {
-              generatedText = generatedText[generatedText.length - 1]?.content;
-          } else if (typeof generatedText === 'string') {
-              generatedText = generatedText.split("assistant\n").pop().trim();
-          }
+                const response = await generator(prompt, { 
+                    max_new_tokens: 30, 
+                    temperature: 0.3 
+                });
 
-          statusDiv.innerText = "AI Engine: Standby / Ready";
-          outputDiv.innerText = generatedText && generatedText.trim() 
-              ? generatedText.trim() 
-              : `A fascinating ${contextType}! Click again to try generating another fact.`;
+                let resultText = response[0]?.generated_text || "";
+                if (resultText.startsWith(prompt)) {
+                    resultText = resultText.substring(prompt.length).trim();
+                }
 
-      } catch (error) {
-          console.error("AI Generation Error:", error);
-          statusDiv.innerText = "AI Engine: Error";
-          outputDiv.innerText = "Could not produce data: " + error.message;
-      }
+                // Save into the global cache mapping
+                window.aiFactCache[stop.location] = resultText;
+                console.log(`[Trip Mapper AI] Cached fact for: ${stop.location}`);
+            } catch (e) {
+                console.error(`Failed background cache for ${stop.location}`, e);
+            }
+        }
+        statusDiv.innerText = "AI Engine: Fully Cached & Ready";
     }
+
+    // Instant click retriever function
+    window.askAIAboutPlace = function(locationName, category = "") {
+        statusDiv.innerText = "AI Engine: Active (Cached)";
+        
+        // Instantaneous memory check
+        if (window.aiFactCache[locationName]) {
+            outputDiv.innerText = window.aiFactCache[locationName];
+        } else {
+            // Fallback UI state if the background worker hasn't reached this stop yet
+            let contextType = category === "flights" ? "airport" : "destination";
+            outputDiv.innerText = `Arrived at ${locationName}! The background AI helper is compiling data for this ${contextType} right now...`;
+            
+            // Kick off a single execution on-demand if missing
+            if (generator) {
+                window.precomputeAllFacts([{ location: locationName, category: category }]);
+            }
+        }
+    }
+
     initAI();
   </script>
 </body>

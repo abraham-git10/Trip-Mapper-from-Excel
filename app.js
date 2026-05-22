@@ -112,6 +112,10 @@ form.addEventListener("submit", async (e) => {
 
       cancelEdit();
       showToast("Stop updated.");
+
+      if (locationChanged && typeof window.precomputeAllFacts === "function") {
+        window.precomputeAllFacts([existingStop]);
+      }
     } else {
       const stop = {
         id: crypto.randomUUID(),
@@ -127,6 +131,9 @@ form.addEventListener("submit", async (e) => {
       stops.push(stop);
       resetFormFields();
       showToast(`Added to ${CATEGORIES[activeCategory].label}.`);
+      if (typeof window.precomputeAllFacts === "function") {
+        window.precomputeAllFacts([stop]); 
+      }
     }
 
     updateMarkerVisibility();
