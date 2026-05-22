@@ -121,7 +121,6 @@
             statusDiv.innerText = "AI Engine: Standby / Ready";
             outputDiv.innerText = "Select or click any stop to view automated AI facts.";
             
-            // Check if any initial stops exist from an Excel upload script
             if (window.stops && window.stops.length > 0) {
                 window.precomputeAllFacts(window.stops);
             }
@@ -139,34 +138,38 @@
         for (const stop of stopsArray) {
             if (!stop.location) continue;
             
-            // Clean up the key to prevent trailing space mismatches
             const cacheKey = stop.location.trim();
             if (window.aiFactCache[cacheKey]) continue;
 
             try {
-                // Short, declarative prompt forces the model to complete the sentence instantly
-                const prompt = `Fact about ${cacheKey}:`;
+                // Constructing a native ChatML template block that Qwen understands perfectly
+                const prompt = `<|im_start|>system\nYou are a helpful travel assistant. Provide a concise, one-sentence interesting fact about the location given.<|im_end|>\n<|im_start|>user\nTell me an interesting travel fact about ${cacheKey}.<|im_end|>\n<|im_start|>assistant\n`;
 
                 const response = await generator(prompt, { 
-                    max_new_tokens: 25, 
-                    temperature: 0.2, // Lower temperature makes it predictable and faster
-                    do_sample: true
+                    max_new_tokens: 40, 
+                    temperature: 0.6, 
+                    do_sample: true,
+                    // Stop generating if it reaches the response end token natively
+                    stop: ["<|im_end|>"] 
                 });
 
                 let resultText = response[0]?.generated_text || "";
                 
-                // Strip out the prompt cleanly
-                if (resultText.startsWith(prompt)) {
-                    resultText = resultText.substring(prompt.length).trim();
+                // Extract only what the assistant wrote after its turn token
+                if (resultText.includes("<|im_start|>assistant\n")) {
+                    resultText = resultText.split("<|im_start|>assistant\n").pop();
                 }
+                
+                // Strip off any structural trailing garbage
+                resultText = resultText.replace("<|im_end|>", "").trim();
 
-                // Bulletproof Fallback: If the model generated absolutely nothing, don't leave it blank
-                if (!resultText) {
-                    resultText = `${cacheKey} is a key destination on this custom itinerary route.`;
+                // Final safety fallback if it still breaks
+                if (!resultText || resultText.length < 5) {
+                    resultText = `${cacheKey} is an active transit destination added to your map itinerary.`;
                 }
 
                 window.aiFactCache[cacheKey] = resultText;
-                console.log(`[Trip Mapper AI] Successfully cached text for [${cacheKey}]: "${resultText}"`);
+                console.log(`[Trip Mapper AI] Cached fact for [${cacheKey}]: "${resultText}"`);
                 
             } catch (e) {
                 console.error(`Failed background cache for ${stop.location}`, e);
@@ -177,12 +180,8 @@
 
     window.askAIAboutPlace = function(locationName, category = "") {
         const cacheKey = locationName ? locationName.trim() : "";
-        console.log(`[Trip Mapper AI] Checking cache for key: "${cacheKey}"`);
-        console.log("[Trip Mapper AI] Current Cache Status Object:", window.aiFactCache);
-
         statusDiv.innerText = "AI Engine: Active (Cached)";
         
-        // Match against our cleaned cache key safely
         if (window.aiFactCache[cacheKey]) {
             outputDiv.innerText = window.aiFactCache[cacheKey];
         } else {
