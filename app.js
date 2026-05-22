@@ -10,6 +10,23 @@ const CATEGORIES = {
 
 const NOMINATIM_EMAIL = "trip-mapper@users.noreply.github.com";
 
+const SEARCH_PHRASES = [
+  "Finding location…",
+  "Pinging satellites…",
+  "Consulting the compass…",
+  "Scanning the globe…",
+  "Tracing coordinates…",
+  "Plotting the course…"
+];
+
+const UPDATE_PHRASES = [
+  "Updating location…",
+  "Recalculating coordinates…",
+  "Adjusting the pin…",
+  "Shifting map markers…",
+  "Refining the spot…"
+];
+
 let activeCategory = "home";
 let editingStopId = null;
 let tripMap = null;
@@ -84,7 +101,14 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  showToast(isEdit ? "Updating location…" : "Finding location…");
+  // Pick a random phrase depending on whether we are editing or creating a new pin
+  if (isEdit) {
+    const randomUpdate = UPDATE_PHRASES[Math.floor(Math.random() * UPDATE_PHRASES.length)];
+    showToast(randomUpdate);
+  } else {
+    const randomSearch = SEARCH_PHRASES[Math.floor(Math.random() * SEARCH_PHRASES.length)];
+    showToast(randomSearch);
+  }
 
   try {
     const locationChanged = !isEdit || existingStop.location !== location;
