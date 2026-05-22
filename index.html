@@ -143,7 +143,7 @@
 
             try {
                 // Constructing a native ChatML template block that Qwen understands perfectly
-                const prompt = `<|im_start|>system\nYou are an English-only travel assistant. You must respond exclusively in English. Provide information regarding the safety of the location, what is known for, what to do there, and if there is any intersting wildlife there(emphasize if they are harmful)<|im_end|>\n<|im_start|>user\n${cacheKey}<|im_end|>\n<|im_start|>assistant\n`;
+                const prompt = `<|im_start|>system\nYou are an English-only travel assistant. You must respond exclusively in English. Provide exactly one interesting travel fact about the place provided.<|im_end|>\n<|im_start|>user\n${cacheKey}<|im_end|>\n<|im_start|>assistant\n`;
 
                 const response = await generator(prompt, { 
                     max_new_tokens: 100, 
