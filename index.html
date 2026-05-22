@@ -149,8 +149,8 @@
                     max_new_tokens: 40, 
                     temperature: 0.6, 
                     do_sample: true,
-                    // Stop generating if it reaches the response end token natively
-                    stop: ["<|im_end|>"] 
+                    return_full_text: false;
+                    stop: ["<|im_end|>", "<|im_start|>", "\n"]
                 });
 
                 let resultText = response[0]?.generated_text || "";
