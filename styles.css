@@ -469,6 +469,15 @@ a {
   word-break: break-word;
 }
 
+/* Map area */
+.map-container {
+  flex: 1;
+  position: relative;
+  min-width: 320px;
+  min-height: 0;
+  height: 100%;
+}
+
 #map {
   position: absolute;
   inset: 0;
