@@ -262,6 +262,20 @@ function focusStop(stop) {
   if (stop.marker) {
     stop.marker.openPopup();
   }
+
+  // Update right sidebar header text dynamically
+  const rightTitle = document.getElementById("right-sidebar-title");
+  const rightSubtitle = document.getElementById("right-sidebar-subtitle");
+  
+  if (rightTitle && rightSubtitle) {
+    rightTitle.textContent = stop.location;
+    rightSubtitle.textContent = `Category: ${CATEGORIES[stop.category]?.label ?? stop.category}`;
+  }
+
+  // Trigger the browser AI engine
+  if (typeof window.askAIAboutPlace === "function") {
+    window.askAIAboutPlace(stop.location);
+  }
 }
 
 function startEdit(stop) {

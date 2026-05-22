@@ -92,12 +92,61 @@
     <aside class="right-sidebar">
       <header class="right-sidebar-header">
         <h1 id="right-sidebar-title">About this Place</h1>
-        <p id="right-sidebar-subtitle">Click on a pin on the map to learn more about it.</p>
+        <p id="right-sidebar-subtitle">Click on a pin to learn more about it.</p>
       </header>
+
+      <div class="ai-info-section" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; flex: 1;">
+        <div id="ai-status" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">AI Engine: Initializing...</div>
+        <div id="ai-output" style="font-size: 0.9375rem; line-height: 1.5; color: var(--text); white-space: pre-wrap;">The local background model is preparing (~350MB)...</div>
+      </div>
     </aside>
     </div>
   </div>
 
   <script type="module" src="app.js"></script>
+
+  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+
+    let generator;
+    const statusDiv = document.getElementById('ai-status');
+    const outputDiv = document.getElementById('ai-output');
+
+    async function initAI() {
+        try {
+            statusDiv.innerText = "AI Engine: Downloading Model (~350MB)...";
+            generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat');
+            statusDiv.innerText = "AI Engine: Standby / Ready";
+            outputDiv.innerText = "Select or click any stop to view automated AI facts.";
+        } catch (error) {
+            statusDiv.innerText = "AI Engine: Offline";
+            outputDiv.innerText = "Error loading AI: " + error.message;
+        }
+    }
+
+    window.askAIAboutPlace = async function(locationName) {
+        if (!generator) return;
+        statusDiv.innerText = "AI Engine: Generating Fact...";
+        outputDiv.innerText = `Thinking about ${locationName}...`;
+        try {
+            const cleanPrompt = `Give me a concise, one-sentence interesting travel fact about ${locationName}.`;
+            const response = await generator(cleanPrompt, {
+                max_new_tokens: 80,
+                temperature: 0.6,
+                do_sample: true
+            });
+            let generatedText = response[0].generated_text;
+            if (generatedText.startsWith(cleanPrompt)) {
+                generatedText = generatedText.substring(cleanPrompt.length).trim();
+            }
+            statusDiv.innerText = "AI Engine: Done";
+            outputDiv.innerText = generatedText || "No information found.";
+        } catch (error) {
+            statusDiv.innerText = "AI Engine: Error";
+            outputDiv.innerText = "Could not produce data: " + error.message;
+        }
+    }
+    initAI();
+  </script>
 </body>
 </html>
