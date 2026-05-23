@@ -103,17 +103,21 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
+  // -----------------------------------------------------------------
+  // FIXED SHUFFLE LOGIC: Update formToast directly to bypass showToast timers
+  // -----------------------------------------------------------------
   clearInterval(toastInterval); 
   const phraseBank = isEdit ? UPDATE_PHRASES : SEARCH_PHRASES;
 
-  // Show the first phrase instantly
-  showToast(phraseBank[Math.floor(Math.random() * phraseBank.length)]);
+  // Set the first message immediately
+  formToast.textContent = phraseBank[Math.floor(Math.random() * phraseBank.length)];
 
-  // Shuffle a new phrase onto the screen every 2000ms (2 seconds)
+  // Switch the message exactly every 2000ms (2 seconds)
   toastInterval = setInterval(() => {
     const nextPhrase = phraseBank[Math.floor(Math.random() * phraseBank.length)];
-    formToast.textContent = nextPhrase; // Updates the DOM element directly without hiding it
+    formToast.textContent = nextPhrase; 
   }, 2000);
+  // -----------------------------------------------------------------
 
   try {
     const locationChanged = !isEdit || existingStop.location !== location;
