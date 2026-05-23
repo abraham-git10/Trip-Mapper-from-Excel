@@ -19,6 +19,8 @@ const SEARCH_PHRASES = [
   "Plotting the course…"
 ];
 
+let toastInterval = null; // <-- Keeps track of the active 2-second shuffle loop
+
 const UPDATE_PHRASES = [
   "Updating location…",
   "Recalculating coordinates…",
@@ -101,14 +103,17 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  // Pick a random phrase depending on whether we are editing or creating a new pin
-  if (isEdit) {
-    const randomUpdate = UPDATE_PHRASES[Math.floor(Math.random() * UPDATE_PHRASES.length)];
-    showToast(randomUpdate);
-  } else {
-    const randomSearch = SEARCH_PHRASES[Math.floor(Math.random() * SEARCH_PHRASES.length)];
-    showToast(randomSearch);
-  }
+  clearInterval(toastInterval); 
+  const phraseBank = isEdit ? UPDATE_PHRASES : SEARCH_PHRASES;
+
+  // Show the first phrase instantly
+  showToast(phraseBank[Math.floor(Math.random() * phraseBank.length)]);
+
+  // Shuffle a new phrase onto the screen every 2000ms (2 seconds)
+  toastInterval = setInterval(() => {
+    const nextPhrase = phraseBank[Math.floor(Math.random() * phraseBank.length)];
+    formToast.textContent = nextPhrase; // Updates the DOM element directly without hiding it
+  }, 2000);
 
   try {
     const locationChanged = !isEdit || existingStop.location !== location;
@@ -170,9 +175,11 @@ form.addEventListener("submit", async (e) => {
       err.message === "ZERO_RESULTS"
         ? "Could not find that location. Try a more specific address."
         : "Could not place this location on the map. Check your connection or try again.";
+    clearInterval(toastInterval);
     showToast("Location not found on map.");
   } finally {
     setFormLoading(false);
+    clearInterval(toastInterval);
   }
 });
 
