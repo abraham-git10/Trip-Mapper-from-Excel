@@ -10,25 +10,6 @@ const CATEGORIES = {
 
 const NOMINATIM_EMAIL = "trip-mapper@users.noreply.github.com";
 
-const SEARCH_PHRASES = [
-  "Finding location…",
-  "Pinging satellites…",
-  "Consulting the compass…",
-  "Scanning the globe…",
-  "Tracing coordinates…",
-  "Plotting the course…"
-];
-
-let toastInterval = null; // <-- Keeps track of the active 2-second shuffle loop
-
-const UPDATE_PHRASES = [
-  "Updating location…",
-  "Recalculating coordinates…",
-  "Adjusting the pin…",
-  "Shifting map markers…",
-  "Refining the spot…"
-];
-
 let activeCategory = "home";
 let editingStopId = null;
 let tripMap = null;
@@ -103,21 +84,7 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  // -----------------------------------------------------------------
-  // FIXED SHUFFLE LOGIC: Update formToast directly to bypass showToast timers
-  // -----------------------------------------------------------------
-  clearInterval(toastInterval); 
-  const phraseBank = isEdit ? UPDATE_PHRASES : SEARCH_PHRASES;
-
-  // Set the first message immediately
-  formToast.textContent = phraseBank[Math.floor(Math.random() * phraseBank.length)];
-
-  // Switch the message exactly every 2000ms (2 seconds)
-  toastInterval = setInterval(() => {
-    const nextPhrase = phraseBank[Math.floor(Math.random() * phraseBank.length)];
-    formToast.textContent = nextPhrase; 
-  }, 2000);
-  // -----------------------------------------------------------------
+  showToast(isEdit ? "Updating location…" : "Finding location…");
 
   try {
     const locationChanged = !isEdit || existingStop.location !== location;
@@ -145,10 +112,6 @@ form.addEventListener("submit", async (e) => {
 
       cancelEdit();
       showToast("Stop updated.");
-
-      if (locationChanged && typeof window.precomputeAllFacts === "function") {
-        window.precomputeAllFacts([existingStop]);
-      }
     } else {
       const stop = {
         id: crypto.randomUUID(),
@@ -164,9 +127,6 @@ form.addEventListener("submit", async (e) => {
       stops.push(stop);
       resetFormFields();
       showToast(`Added to ${CATEGORIES[activeCategory].label}.`);
-      if (typeof window.precomputeAllFacts === "function") {
-        window.precomputeAllFacts([stop]); 
-      }
     }
 
     updateMarkerVisibility();
@@ -179,11 +139,9 @@ form.addEventListener("submit", async (e) => {
       err.message === "ZERO_RESULTS"
         ? "Could not find that location. Try a more specific address."
         : "Could not place this location on the map. Check your connection or try again.";
-    clearInterval(toastInterval);
     showToast("Location not found on map.");
   } finally {
     setFormLoading(false);
-    clearInterval(toastInterval);
   }
 });
 
@@ -253,13 +211,7 @@ function createMarker(stop) {
     fillOpacity: 1,
   });
 
-  marker.bindPopup(buildPopupHtml(stop), { autoPan: false });
-
-  marker.on("click", () => {
-    console.log(`[Trip Mapper AI] Pin clicked for: ${stop.location}`);
-    focusStop(stop); 
-  });
-
+  marker.bindPopup(buildPopupHtml(stop));
   return marker;
 }
 
