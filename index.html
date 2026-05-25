@@ -92,109 +92,12 @@
     <aside class="right-sidebar">
       <header class="right-sidebar-header">
         <h1 id="right-sidebar-title">About this Place</h1>
-        <p id="right-sidebar-subtitle">Click on a pin to learn more about it.</p>
+        <p id="right-sidebar-subtitle">Click on a pin on the map to learn more about it.</p>
       </header>
-
-      <div class="ai-info-section" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; flex: 1;">
-        <div id="ai-status" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">AI Engine: Initializing...</div>
-        <div id="ai-output" style="font-size: 0.9375rem; line-height: 1.5; color: var(--text); white-space: pre-wrap;">The local background model is preparing (~350MB)...</div>
-      </div>
     </aside>
     </div>
   </div>
 
   <script type="module" src="app.js"></script>
-
-  <script type="module">
-    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
-
-    let generator = null;
-    window.aiFactCache = {}; 
-
-    const statusDiv = document.getElementById('ai-status');
-    const outputDiv = document.getElementById('ai-output');
-
-    async function initAI() {
-        try {
-            statusDiv.innerText = "AI Engine: Downloading Model...";
-            generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat');
-            statusDiv.innerText = "AI Engine: Standby / Ready";
-            outputDiv.innerText = "Select or click any stop to view automated AI facts.";
-            
-            if (window.stops && window.stops.length > 0) {
-                window.precomputeAllFacts(window.stops);
-            }
-        } catch (error) {
-            console.error("AI Init Error:", error);
-            statusDiv.innerText = "AI Engine: Offline";
-        }
-    }
-
-    window.precomputeAllFacts = async function(stopsArray) {
-        if (!generator) return;
-        
-        statusDiv.innerText = "AI Engine: Optimizing route data...";
-
-        for (const stop of stopsArray) {
-            if (!stop.location) continue;
-            
-            const cacheKey = stop.location.trim();
-            if (window.aiFactCache[cacheKey]) continue;
-
-            try {
-                // Constructing a native ChatML template block that Qwen understands perfectly
-                const prompt = `<|im_start|>system\nYou are an English-only travel assistant. You must respond exclusively in English. Provide exactly one interesting travel fact about the place provided.<|im_end|>\n<|im_start|>user\n${cacheKey}<|im_end|>\n<|im_start|>assistant\n`;
-
-                const response = await generator(prompt, { 
-                    max_new_tokens: 100, 
-                    temperature: 0.6, 
-                    do_sample: true,
-                    return_full_text: false,
-                    stop: ["<|im_end|>", "<|im_start|>", "\n"]
-                });
-
-                let resultText = response[0]?.generated_text || "";
-                
-                // Extract only what the assistant wrote after its turn token
-                if (resultText.includes("<|im_start|>assistant\n")) {
-                    resultText = resultText.split("<|im_start|>assistant\n").pop();
-                }
-                
-                // Strip off any structural trailing garbage
-                resultText = resultText.replace("<|im_end|>", "").trim();
-
-                // Final safety fallback if it still breaks
-                if (!resultText || resultText.length < 5) {
-                    resultText = `${cacheKey} is an active transit destination added to your map itinerary.`;
-                }
-
-                window.aiFactCache[cacheKey] = resultText;
-                console.log(`[Trip Mapper AI] Cached fact for [${cacheKey}]: "${resultText}"`);
-                
-            } catch (e) {
-                console.error(`Failed background cache for ${stop.location}`, e);
-            }
-        }
-        statusDiv.innerText = "AI Engine: Fully Cached & Ready";
-    }
-
-    window.askAIAboutPlace = function(locationName, category = "") {
-        const cacheKey = locationName ? locationName.trim() : "";
-        statusDiv.innerText = "AI Engine: Active (Cached)";
-        
-        if (window.aiFactCache[cacheKey]) {
-            outputDiv.innerText = window.aiFactCache[cacheKey];
-        } else {
-            let contextType = category === "flights" ? "airport" : "destination";
-            outputDiv.innerText = `Arrived at ${cacheKey}! The background AI helper is compiling data for this ${contextType} right now...`;
-            
-            if (generator) {
-                window.precomputeAllFacts([{ location: cacheKey, category: category }]);
-            }
-        }
-    }
-
-    initAI();
-  </script>
 </body>
 </html>
