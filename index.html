@@ -1,103 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trip Mapper</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Gemini Client-Side Integration</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 0 20px;
+            line-height: 1.6;
+        }
+        .container {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 24px;
+            background: #fafafa;
+        }
+        .input-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input[type="password"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #0070f3;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button:hover {
+            background-color: #0051a8;
+        }
+        .output {
+            margin-top: 20px;
+            padding: 16px;
+            background: #fff;
+            border-left: 4px solid #0070f3;
+            white-space: pre-wrap;
+            display: none;
+        }
+        .help-text {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 4px;
+        }
+    </style>
 </head>
 <body>
-  <div class="app-shell">
-    <nav class="navbar" aria-label="Trip categories">
-      <a class="navbar-brand" href="#">Trip Mapper</a>
-      <ul class="navbar-tabs" role="tablist">
-        <li role="presentation">
-          <button type="button" class="navbar-tab is-active" role="tab" aria-selected="true" data-category="home">Home</button>
-        </li>
-        <li role="presentation">
-          <button type="button" class="navbar-tab" role="tab" aria-selected="false" data-category="flights">Flights</button>
-        </li>
-        <li role="presentation">
-          <button type="button" class="navbar-tab" role="tab" aria-selected="false" data-category="stays">Stays</button>
-        </li>
-        <li role="presentation">
-          <button type="button" class="navbar-tab" role="tab" aria-selected="false" data-category="attractions">Attractions</button>
-        </li>
-      </ul>
-    </nav>
 
-    <div class="app">
-    <aside class="left-sidebar">
-      <header class="left-sidebar-header">
-        <h1 id="left-sidebar-title">Your trip</h1>
-        <p id="left-sidebar-subtitle">Add stops to your trip on the map.</p>
-      </header>
+    <h2>Gemini Pro Frontend Client</h2>
+    <p>This application processes AI requests entirely inside your browser. Your API key is stored locally on your device and is never sent to an external server other than Google's official API endpoint.</p>
 
-      <form class="left-sidebar-form" id="stop-form" autocomplete="off" novalidate>
-        <div class="field field--location" id="location-field">
-          <label for="location">Location</label>
-          <input
-            type="text"
-            id="location"
-            name="location"
-            placeholder="e.g. Eiffel Tower, Paris"
-          />
-          <p class="field-error" id="location-error" role="alert"></p>
+    <div class="container">
+        <div class="input-group">
+            <label for="apiKey">Gemini API Key</label>
+            <input type="password" id="apiKey" placeholder="AIzaSy...">
+            <p class="help-text">Get a free key from <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a>. It will be saved in your browser's local storage.</p>
         </div>
 
-        <div class="field">
-          <label for="comments">Comments</label>
-          <textarea
-            id="comments"
-            name="comments"
-            rows="3"
-            placeholder="Notes, times, booking refs…"
-          ></textarea>
+        <div class="input-group">
+            <label for="prompt">Your Prompt</label>
+            <textarea id="prompt" rows="4" placeholder="Type something here..."></textarea>
         </div>
 
-        <div class="field">
-          <label for="color">Color</label>
-          <div class="color-row">
-            <input type="color" id="color" name="color" value="#3b82f6" />
-            <input
-              type="text"
-              id="color-hex"
-              value="#3b82f6"
-              maxlength="7"
-              aria-label="Color hex value"
-            />
-          </div>
-        </div>
+        <button id="submitBtn">Generate Response</button>
 
-        <p class="form-toast" id="form-toast" aria-live="polite"></p>
-        <div class="form-actions">
-          <button type="button" class="btn-cancel" id="cancel-edit" hidden>Cancel</button>
-          <button type="submit" class="btn-add" id="submit-stop">Add to map</button>
-        </div>
-      </form>
-
-      <section class="stops-section" aria-label="Trip stops">
-        <h2>Your stops</h2>
-        <p class="stops-empty" id="stops-empty">No stops yet. Add a location above.</p>
-        <ul class="stops-list" id="stops-list"></ul>
-      </section>
-    </aside>
-
-    <main class="map-container">
-      <div id="map"></div>
-    </main>
-
-    <aside class="right-sidebar">
-      <header class="right-sidebar-header">
-        <h1 id="right-sidebar-title">About this Place</h1>
-        <p id="right-sidebar-subtitle">Click on a pin on the map to learn more about it.</p>
-      </header>
-    </aside>
+        <div id="output" class="output"></div>
     </div>
-  </div>
 
-  <script type="module" src="app.js"></script>
+    <script type="module">
+        // Using the official web-ready Google Gen AI SDK from an ES module CDN
+        import { GoogleGenAI } from 'https://esm.run/@google/genai';
+
+        const apiKeyInput = document.getElementById('apiKey');
+        const promptInput = document.getElementById('prompt');
+        const submitBtn = document.getElementById('submitBtn');
+        const outputDiv = document.getElementById('output');
+
+        // Automatically load previously saved key if it exists
+        if (localStorage.getItem('user_gemini_key')) {
+            apiKeyInput.value = localStorage.getItem('user_gemini_key');
+        }
+
+        submitBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            const prompt = promptInput.value.trim();
+
+            if (!apiKey) {
+                alert('Please enter your Gemini API key.');
+                return;
+            }
+            if (!prompt) {
+                alert('Please enter a prompt.');
+                return;
+            }
+
+            // Save the key locally for future sessions
+            localStorage.setItem('user_gemini_key', apiKey);
+
+            outputDiv.style.display = 'block';
+            outputDiv.textContent = 'Generating...';
+
+            try {
+                // Initialize the SDK with the user-provided key
+                const ai = new GoogleGenAI({ apiKey: apiKey });
+                
+                const response = await ai.models.generateContent({
+                    model: 'gemini-1.5-flash',
+                    contents: prompt,
+                });
+
+                outputDiv.textContent = response.text;
+            } catch (error) {
+                console.error(error);
+                outputDiv.textContent = `Error: ${error.message || 'Failed to generate content. Please verify your API key and network connection.'}`;
+            }
+        });
+    </script>
 </body>
 </html>
